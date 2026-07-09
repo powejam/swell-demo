@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' https://marine-api.open-meteo.com https://api.open-meteo.com; base-uri 'none'; form-action 'none'; object-src 'none'">
+<meta name="referrer" content="no-referrer">
+<meta name="theme-color" content="#07161f">
+<meta name="description" content="Live surf conditions and 7-day outlook for popular breaks worldwide.">
+<link rel="manifest" href="./manifest.webmanifest">
+<link rel="icon" href="./icon-192.png">
+<link rel="apple-touch-icon" href="./icon-192.png">
+<title>Swell — live surf conditions</title>
+<style>
+/* BUILD 20260709141821 */
+:root{
+  --ink:#07161f;        /* deep water at dusk */
+  --ink-2:#0d2431;      /* raised panels */
+  --line:#1c3a49;       /* hairline seams */
+  --foam:#eef6f4;       /* primary text */
+  --mist:#8fb0ba;       /* secondary text */
+  --kelp:#2fa98c;       /* live data accent */
+  --board:#ff7a59;      /* surfer / highlight coral */
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{-webkit-text-size-adjust:100%}
+body{
+  background:var(--ink);
+  color:var(--foam);
+  font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  min-height:100dvh;
+  padding-bottom:env(safe-area-inset-bottom);
+}
+.wrap{max-width:640px;margin:0 auto;padding:0 16px}
+
+header{padding:18px 0 10px}
+.brand{display:flex;align-items:baseline;gap:10px}
+h1{font-size:1.45rem;font-weight:800;letter-spacing:-.03em}
+h1 em{font-style:normal;color:var(--kelp)}
+.brand .tag{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:.68rem;color:var(--mist);letter-spacing:.08em;text-transform:uppercase}
+
+.picker{margin:10px 0 14px}
+.picker label{display:block;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:.68rem;letter-spacing:.08em;text-transform:uppercase;color:var(--mist);margin-bottom:6px}
+select{
+  width:100%;appearance:none;-webkit-appearance:none;
+  background:var(--ink-2) url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%238fb0ba' stroke-width='2' fill='none'/%3E%3C/svg%3E") no-repeat right 14px center;
+  border:1px solid var(--line);border-radius:10px;
+  color:var(--foam);font-size:1rem;padding:12px 40px 12px 14px;
+}
+select:focus-visible{outline:2px solid var(--kelp);outline-offset:2px}
+
+.scene{
+  position:relative;border:1px solid var(--line);border-radius:14px;overflow:hidden;
+  background:linear-gradient(#0e2c3a 0%,#0a2230 55%,#081b27 100%);
+}
+canvas{display:block;width:100%;height:220px}
+.scene .live{
+  position:absolute;top:10px;left:12px;
+  font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:.66rem;letter-spacing:.1em;text-transform:uppercase;color:var(--mist);
+}
+.scene .live b{color:var(--kelp);font-weight:600}
+
+.status{margin:12px 0;color:var(--mist);font-size:.9rem;min-height:1.2em}
+.status.err{color:var(--board)}
+
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:14px 0}
+@media(min-width:560px){.grid{grid-template-columns:repeat(3,1fr)}}
+.cell{background:var(--ink-2);border:1px solid var(--line);border-radius:12px;padding:12px 14px}
+.cell .k{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:.64rem;letter-spacing:.1em;text-transform:uppercase;color:var(--mist)}
+.cell .v{font-size:1.35rem;font-weight:700;letter-spacing:-.02em;margin-top:4px;font-variant-numeric:tabular-nums}
+.cell .v small{font-size:.72rem;font-weight:500;color:var(--mist);margin-left:4px}
+.cell .sub{font-size:.78rem;color:var(--mist);margin-top:2px}
+.arrow{display:inline-block;color:var(--kelp);font-weight:700}
+
+h2{font-size:.78rem;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;letter-spacing:.12em;text-transform:uppercase;color:var(--mist);margin:20px 0 8px}
+.days{border-top:1px solid var(--line)}
+.day{
+  display:grid;grid-template-columns:3.4rem 1.6rem 1fr auto;align-items:center;gap:10px;
+  padding:11px 2px;border-bottom:1px solid var(--line);font-variant-numeric:tabular-nums;
+}
+.day .dn{font-weight:700;font-size:.92rem}
+.day .wx{font-size:1.1rem;text-align:center}
+.day .det{font-size:.82rem;color:var(--mist)}
+.day .det b{color:var(--foam);font-weight:600}
+.day .wv{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:.88rem;color:var(--kelp);font-weight:600;text-align:right}
+
+footer{padding:22px 0 30px;color:var(--mist);font-size:.72rem;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+footer a{color:var(--mist)}
+@media(prefers-reduced-motion:reduce){canvas{opacity:.9}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="brand">
+      <h1>swell<em>.</em></h1>
+      <span class="tag">live surf report</span>
+    </div>
+  </header>
+
+  <div class="picker">
+    <label for="spot">Surf break</label>
+    <select id="spot" aria-label="Choose a surf break"></select>
+  </div>
+
+  <div class="scene">
+    <canvas id="sea" height="220" aria-label="Animated surfer riding waves scaled to live wave height" role="img"></canvas>
+    <div class="live" id="liveTag">wave <b>—</b></div>
+  </div>
+
+  <p class="status" id="status" role="status">Loading conditions…</p>
+
+  <div class="grid" id="grid" hidden>
+    <div class="cell"><div class="k">Wave size</div><div class="v" id="cWave">—</div><div class="sub" id="cWaveSub"></div></div>
+    <div class="cell"><div class="k">Swell</div><div class="v" id="cSwell">—</div><div class="sub" id="cSwellSub"></div></div>
+    <div class="cell"><div class="k">Period</div><div class="v" id="cPeriod">—</div><div class="sub">swell interval</div></div>
+    <div class="cell"><div class="k">Wind</div><div class="v" id="cWind">—</div><div class="sub" id="cWindSub"></div></div>
+    <div class="cell"><div class="k">Water temp</div><div class="v" id="cWater">—</div><div class="sub">sea surface</div></div>
+    <div class="cell"><div class="k">Weather</div><div class="v" id="cWx">—</div><div class="sub" id="cWxSub"></div></div>
+  </div>
+
+  <h2>Next 7 days</h2>
+  <div class="days" id="days"></div>
+
+  <footer>
+    Data: Open-Meteo (marine &amp; forecast). No account, no tracking.<br>
+    build 20260709141821
+  </footer>
+</div>
+
+<script>
+'use strict';
+const BUILD = '20260709141821';
+
+/* ---------- surf breaks: 22 across 5 regions ---------- */
+const SPOTS = {
+  'United Kingdom': [
+    ['Fistral Beach, Newquay', 50.4160, -5.1000],
+    ['Croyde Bay, Devon', 51.1300, -4.2380],
+    ['Woolacombe, Devon', 51.1710, -4.2110],
+    ['Rest Bay, Porthcawl', 51.4930, -3.7360],
+    ['Thurso East, Scotland', 58.6010, -3.5140]
+  ],
+  'France': [
+    ['La Gravière, Hossegor', 43.6710, -1.4430],
+    ['Grande Plage, Biarritz', 43.4840, -1.5590],
+    ['Lacanau Océan', 45.0010, -1.2030],
+    ['La Torche, Brittany', 47.8390, -4.3480]
+  ],
+  'Portugal': [
+    ['Praia do Norte, Nazaré', 39.6100, -9.0850],
+    ['Supertubos, Peniche', 39.3450, -9.3630],
+    ['Ribeira d\u2019Ilhas, Ericeira', 38.9880, -9.4190],
+    ['Carcavelos, Lisbon', 38.6790, -9.3360],
+    ['Tonel, Sagres', 37.0090, -8.9480]
+  ],
+  'Sri Lanka': [
+    ['Arugam Bay', 6.8400, 81.8360],
+    ['Weligama Bay', 5.9720, 80.4290],
+    ['Hikkaduwa', 6.1370, 80.0990],
+    ['Mirissa', 5.9440, 80.4590]
+  ],
+  'Hawaii': [
+    ['Banzai Pipeline, Oahu', 21.6650, -158.0530],
+    ['Waimea Bay, Oahu', 21.6400, -158.0680],
+    ['Waikiki, Oahu', 21.2720, -157.8250],
+    ['Honolua Bay, Maui', 21.0140, -156.6420]
+  ]
+};
+
+/* ---------- helpers ---------- */
+const $ = id => document.getElementById(id);
+const KMH_TO_MPH = 0.621371;           // wind converted client-side, not via API param
+const M_TO_FT = 3.28084;
+const COMPASS = ['N','NNE','NE','ENE','E','ESE','SE','SSE','S','SSW','SW','WSW','W','WNW','NW','NNW'];
+const compass = d => COMPASS[Math.round(((d % 360) + 360) % 360 / 22.5) % 16];
+/* Open-Meteo directions are "coming from"; arrows show where flow is GOING (+180°) */
+const flowArrow = deg => {
+  const s = document.createElement('span');
+  s.className = 'arrow';
+  s.textContent = '\u2191';
+  s.style.transform = 'rotate(' + ((deg + 180) % 360) + 'deg)';
+  s.style.display = 'inline-block';
+  return s;
+};
+const WMO = [
+  [[0],'Clear','\u2600\uFE0F'], [[1,2],'Partly cloudy','\u26C5'], [[3],'Overcast','\u2601\uFE0F'],
+  [[45,48],'Fog','\uD83C\uDF2B\uFE0F'], [[51,53,55,56,57],'Drizzle','\uD83C\uDF26\uFE0F'],
+  [[61,63,65,66,67],'Rain','\uD83C\uDF27\uFE0F'], [[71,73,75,77],'Snow','\uD83C\uDF28\uFE0F'],
+  [[80,81,82],'Showers','\uD83C\uDF27\uFE0F'], [[85,86],'Snow showers','\uD83C\uDF28\uFE0F'],
+  [[95,96,99],'Thunderstorm','\u26C8\uFE0F']
+];
+function wmo(code){
+  for (const [codes, label, icon] of WMO) if (codes.includes(code)) return { label, icon };
+  return { label: 'Unknown', icon: '\u2022' };
+}
+const fmt = (n, dp = 1) => (n === null || n === undefined || Number.isNaN(n)) ? '—' : n.toFixed(dp);
+
+/* ---------- dropdown, grouped by region ---------- */
+const sel = $('spot');
+Object.entries(SPOTS).forEach(([region, spots]) => {
+  const g = document.createElement('optgroup');
+  g.label = region;
+  spots.forEach(([name, lat, lon]) => {
+    const o = document.createElement('option');
+    o.value = lat + ',' + lon;
+    o.textContent = name;
+    g.appendChild(o);
+  });
+  sel.appendChild(g);
+});
+sel.selectedIndex = 0;
+
+/* ---------- data fetch (stale responses discarded via reqSeq) ---------- */
+let reqSeq = 0;
+const anim = { waveH: 1.2, target: 1.2 };
+
+async function load(){
+  const seq = ++reqSeq;
+  const [lat, lon] = sel.value.split(',').map(Number);
+  $('status').textContent = 'Loading conditions\u2026';
+  $('status').classList.remove('err');
+  try {
+    const marineURL = 'https://marine-api.open-meteo.com/v1/marine?latitude=' + lat + '&longitude=' + lon +
+      '&current=wave_height,wave_period,wave_direction,swell_wave_height,swell_wave_period,swell_wave_direction,sea_surface_temperature' +
+      '&daily=wave_height_max,swell_wave_height_max,wave_period_max&timezone=auto';
+    const wxURL = 'https://api.open-meteo.com/v1/forecast?latitude=' + lat + '&longitude=' + lon +
+      '&current=temperature_2m,wind_speed_10m,wind_direction_10m,weather_code' +
+      '&daily=weather_code,temperature_2m_max,temperature_2m_min,wind_speed_10m_max,wind_direction_10m_dominant&timezone=auto';
+    const [mr, wr] = await Promise.all([fetch(marineURL), fetch(wxURL)]);
+    if (!mr.ok || !wr.ok) throw new Error('API ' + mr.status + '/' + wr.status);
+    const [m, w] = await Promise.all([mr.json(), wr.json()]);
+    if (seq !== reqSeq) return;               // superseded by a newer selection
+    render(m, w);
+  } catch (e) {
+    if (seq !== reqSeq) return;
+    $('status').textContent = 'Could not load conditions. Check your connection and try another break.';
+    $('status').classList.add('err');
+  }
+}
+
+function render(m, w){
+  const c = m.current || {}, cw = w.current || {};
+  const windMph = cw.wind_speed_10m * KMH_TO_MPH;
+  const wx = wmo(cw.weather_code);
+
+  $('cWave').textContent = fmt(c.wave_height) + ' m';
+  $('cWaveSub').textContent = fmt(c.wave_height * M_TO_FT) + ' ft \u00B7 ' + fmt(c.wave_period, 0) + ' s sets';
+
+  $('cSwell').textContent = fmt(c.swell_wave_height) + ' m ';
+  $('cSwell').appendChild(flowArrow(c.swell_wave_direction));
+  $('cSwellSub').textContent = 'from ' + compass(c.swell_wave_direction) + ' (' + Math.round(c.swell_wave_direction) + '\u00B0)';
+
+  $('cPeriod').textContent = fmt(c.swell_wave_period) + ' s';
+
+  $('cWind').textContent = fmt(windMph, 0) + ' mph ';
+  $('cWind').appendChild(flowArrow(cw.wind_direction_10m));
+  $('cWindSub').textContent = 'from ' + compass(cw.wind_direction_10m);
+
+  $('cWater').textContent = fmt(c.sea_surface_temperature) + ' \u00B0C';
+  $('cWx').textContent = wx.icon + ' ' + fmt(cw.temperature_2m, 0) + ' \u00B0C';
+  $('cWxSub').textContent = wx.label;
+
+  $('grid').hidden = false;
+  $('status').textContent = 'Updated ' + new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+
+  anim.target = (typeof c.wave_height === 'number') ? c.wave_height : 1;
+  $('liveTag').replaceChildren('wave ');
+  const b = document.createElement('b');
+  b.textContent = fmt(c.wave_height) + ' m';
+  $('liveTag').appendChild(b);
+
+  /* 7-day outlook: one full line per day */
+  const days = $('days');
+  days.replaceChildren();
+  const wd = w.daily || {}, md = m.daily || {};
+  const n = Math.min(7, (wd.time || []).length);
+  for (let i = 0; i < n; i++){
+    const row = document.createElement('div'); row.className = 'day';
+    const dn = document.createElement('div'); dn.className = 'dn';
+    dn.textContent = i === 0 ? 'Today' : new Date(wd.time[i] + 'T00:00').toLocaleDateString([], {weekday:'short'});
+    const wxd = wmo((wd.weather_code || [])[i]);
+    const ic = document.createElement('div'); ic.className = 'wx'; ic.textContent = wxd.icon;
+    ic.title = wxd.label;
+    const det = document.createElement('div'); det.className = 'det';
+    const airHi = document.createElement('b'); airHi.textContent = fmt((wd.temperature_2m_max||[])[i],0) + '\u00B0';
+    det.append(airHi, ' / ' + fmt((wd.temperature_2m_min||[])[i],0) + '\u00B0 \u00B7 wind ' +
+      fmt(((wd.wind_speed_10m_max||[])[i]) * KMH_TO_MPH, 0) + ' mph ' + compass((wd.wind_direction_10m_dominant||[])[i]));
+    const wv = document.createElement('div'); wv.className = 'wv';
+    wv.textContent = fmt((md.wave_height_max||[])[i]) + ' m @ ' + fmt((md.wave_period_max||[])[i],0) + ' s';
+    row.append(dn, ic, det, wv);
+    days.appendChild(row);
+  }
+}
+
+sel.addEventListener('change', load);
+
+/* ---------- animation: waves right→left, surfer left→right on the front wave ---------- */
+const cv = $('sea'), cx = cv.getContext('2d');
+const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+let W = 0, H = 0, DPR = 1;
+function size(){
+  DPR = Math.min(devicePixelRatio || 1, 2);
+  W = cv.clientWidth; H = cv.clientHeight || 220;
+  cv.width = W * DPR; cv.height = H * DPR;
+  cx.setTransform(DPR, 0, 0, DPR, 0, 0);
+}
+addEventListener('resize', size); size();
+
+let surferX = 0.15, t = 0, last = performance.now();
+
+/* front-wave surface at x for current amplitude/time */
+function surface(x, amp, baseY, tt){
+  const k1 = 0.011, k2 = 0.023;
+  return baseY
+    - amp * 0.72 * Math.sin(k1 * x + tt * 1.15)     /* +t phase ⇒ crests travel right→left */
+    - amp * 0.28 * Math.sin(k2 * x + tt * 1.9 + 1.3);
+}
+
+function frame(now){
+  const dt = Math.min((now - last) / 1000, 0.05); last = now;
+  t += dt;
+  /* ease displayed height toward live value */
+  anim.waveH += (anim.target - anim.waveH) * Math.min(1, dt * 2);
+
+  /* amplitude clamped with reserved headroom so Nazaré-scale stays in frame */
+  const maxAmp = H * 0.20;
+  const amp = Math.max(maxAmp * 0.12, maxAmp * Math.min(anim.waveH, 10) / 10);
+  const baseY = H * 0.62;
+
+  cx.clearRect(0, 0, W, H);
+
+  /* back and mid layers, then the foremost wave */
+  const layers = [
+    { a: amp * 0.45, y: baseY - amp * 0.9, col: '#123a49', sp: 0.55 },
+    { a: amp * 0.70, y: baseY - amp * 0.45, col: '#175a58', sp: 0.8 },
+    { a: amp,        y: baseY,             col: '#1e6e64', sp: 1 }
+  ];
+  for (const L of layers){
+    cx.beginPath();
+    cx.moveTo(0, H);
+    for (let x = 0; x <= W; x += 4) cx.lineTo(x, surface(x, L.a, L.y, t * L.sp));
+    cx.lineTo(W, H);
+    cx.closePath();
+    cx.fillStyle = L.col;
+    cx.fill();
+  }
+  /* foam line on the front wave */
+  cx.beginPath();
+  for (let x = 0; x <= W; x += 4){
+    const y = surface(x, amp, baseY, t);
+    x === 0 ? cx.moveTo(x, y) : cx.lineTo(x, y);
+  }
+  cx.strokeStyle = 'rgba(238,246,244,.5)';
+  cx.lineWidth = 1.5;
+  cx.stroke();
+
+  /* surfer: constant left→right, riding the foremost wave, drawn LAST so always on top */
+  surferX += dt * 0.09;
+  if (surferX > 1.08) surferX = -0.08;
+  const sx = surferX * W;
+  const sy = surface(sx, amp, baseY, t);
+  const slope = (surface(sx + 6, amp, baseY, t) - surface(sx - 6, amp, baseY, t)) / 12;
+  drawSurfer(sx, sy - 4, Math.atan(slope));
+
+  if (!reduced) requestAnimationFrame(frame);
+}
+
+function drawSurfer(x, y, ang){
+  const s = Math.max(0.85, Math.min(1.25, H / 220));
+  cx.save();
+  cx.translate(x, y);
+  cx.rotate(ang);
+  cx.scale(s, s);
+  /* board */
+  cx.fillStyle = '#ff7a59';
+  cx.beginPath();
+  cx.ellipse(0, 0, 16, 3.2, 0, 0, Math.PI * 2);
+  cx.fill();
+  /* body */
+  cx.strokeStyle = '#eef6f4';
+  cx.lineWidth = 2.4;
+  cx.lineCap = 'round';
+  cx.beginPath();
+  cx.moveTo(-4, -2); cx.lineTo(-1, -10);          /* back leg */
+  cx.moveTo(5, -2);  cx.lineTo(2, -10);           /* front leg */
+  cx.moveTo(0.5, -10); cx.lineTo(-1, -19);        /* torso, crouched */
+  cx.moveTo(-1, -16); cx.lineTo(-8, -12);         /* trailing arm */
+  cx.moveTo(-1, -17); cx.lineTo(7, -20);          /* leading arm */
+  cx.stroke();
+  /* head */
+  cx.fillStyle = '#eef6f4';
+  cx.beginPath();
+  cx.arc(-1.5, -22, 3, 0, Math.PI * 2);
+  cx.fill();
+  cx.restore();
+}
+
+requestAnimationFrame(frame);
+if (reduced) setInterval(() => { last = performance.now(); requestAnimationFrame(frame); }, 2000);
+
+/* ---------- service worker: cache keyed to BUILD, failures swallowed ---------- */
+if ('serviceWorker' in navigator){
+  addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js').catch(() => {});   /* offline shell is optional */
+  });
+}
+
+load();
+</script>
+</body>
+</html>

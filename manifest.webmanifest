@@ -1,0 +1,14 @@
+{
+  "name": "Swell — live surf conditions",
+  "short_name": "Swell",
+  "description": "Live surf conditions and 7-day outlook for popular breaks worldwide.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#07161f",
+  "theme_color": "#07161f",
+  "icons": [
+    { "src": "./icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "./icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}
