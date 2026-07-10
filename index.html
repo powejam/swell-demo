@@ -12,7 +12,7 @@
 <link rel="apple-touch-icon" href="./icon-192.png">
 <title>Swell — live surf conditions</title>
 <style>
-/* BUILD 20260709141821 */
+/* BUILD 20260710063903 */
 :root{
   --ink:#07161f;        /* deep water at dusk */
   --ink-2:#0d2431;      /* raised panels */
@@ -124,13 +124,13 @@ footer a{color:var(--mist)}
 
   <footer>
     Data: Open-Meteo (marine &amp; forecast). No account, no tracking.<br>
-    build 20260709141821
+    build 20260710063903
   </footer>
 </div>
 
 <script>
 'use strict';
-const BUILD = '20260709141821';
+const BUILD = '20260710063903';
 
 /* ---------- surf breaks: 22 across 5 regions ---------- */
 const SPOTS = {
@@ -323,9 +323,11 @@ function frame(now){
   /* ease displayed height toward live value */
   anim.waveH += (anim.target - anim.waveH) * Math.min(1, dt * 2);
 
-  /* amplitude clamped with reserved headroom so Nazaré-scale stays in frame */
-  const maxAmp = H * 0.20;
-  const amp = Math.max(maxAmp * 0.12, maxAmp * Math.min(anim.waveH, 10) / 10);
+  /* 5 m tops out the scale; anything bigger renders at max amplitude.
+     maxAmp leaves headroom for the surfer and back layers (crest ≈ 1.35×amp
+     above baseY) so waves and rider stay in frame at full scale. */
+  const maxAmp = H * 0.34;
+  const amp = Math.max(maxAmp * 0.06, maxAmp * Math.min(anim.waveH, 5) / 5);
   const baseY = H * 0.62;
 
   cx.clearRect(0, 0, W, H);
