@@ -1,6 +1,6 @@
 'use strict';
 /* Cache keyed to build stamp — bumping BUILD invalidates the old shell on refresh. */
-const BUILD = '20260710064452';
+const BUILD = '20260710064912';
 const CACHE = 'swell-' + BUILD;
 const SHELL = ['./', './index.html', './manifest.webmanifest', './icon-192.png', './icon-512.png'];
 
